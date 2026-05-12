@@ -1,0 +1,830 @@
+-- Create User Table For CoreBuild
+CREATE TABLE user_profile
+(
+    user_id SERIAL NOT NULL PRIMARY KEY ,
+    full_name VARCHAR(50) NOT NULL ,
+    user_email TEXT UNIQUE NOT NULL CHECK ( user_email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$' ),
+    phone TEXT UNIQUE NOT NULL CHECK ( phone ~ '^\+?[0-9]{10,15}$' ),
+    user_password bytea NOT NULL,
+    user_designation VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Suppliers Table For CoreBuild
+CREATE TABLE supplier_profile
+(
+    supplier_id SERIAL NOT NULL PRIMARY KEY ,
+    full_name VARCHAR(50) NOT NULL ,
+    phone TEXT NOT NULL CHECK ( phone ~ '^\+?[0-9]{10,15}$' ),
+    company_name TEXT NOT NULL,
+    company_type TEXT NOT NULL,
+    business_type VARCHAR(50) NOT NULL ,
+    gst_number varchar(50) NOT NULL,
+    pan_number VARCHAR(50) NOT NULL ,
+    bank_name TEXT,
+    bank_account_number VARCHAR(50),
+    ifsc_code VARCHAR(50),
+    upi_number TEXT UNIQUE NOT NULL CHECK ( phone ~ '^\+?[0-9]{10,15}$' ),
+    supplier_address TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Bank Table For CoreBuild
+CREATE TABLE bank_details
+(
+    bank_id SERIAL NOT NULL PRIMARY KEY,
+    bank_holder_name TEXT NOT NULL,
+    ifsc_code TEXT NOT NULL,
+    bank_account_no VARCHAR(50) NOT NULL,
+    bank_name TEXT NOT NULL,
+    bank_branch_name TEXT NOT NULL,
+    bank_amount NUMERIC(12, 2) NOT NULL,
+    cash NUMERIC(12, 2) NOT NULL,
+    account_type TEXT NOT NULL,
+    created_by INTEGER REFERENCES user_profile(user_id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Bank Audit Ledger
+CREATE TABLE bank_ledger (
+    ledger_id SERIAL PRIMARY KEY,
+    bank_id INT REFERENCES bank_details(bank_id) ON DELETE CASCADE,
+    trxn_id INT REFERENCES expense_requests(trxn_id) ON DELETE CASCADE,
+    flow_type TEXT NOT NULL, -- "OUT" for Approved, "IN" for Returned
+    payment_mode TEXT NOT NULL, -- Cash, Bank, UPI
+    amount NUMERIC(12,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Budget Table
+CREATE TABLE budget_details
+(
+    budget_id SERIAL NOT NULL PRIMARY KEY,
+    budget_month TEXT NOT NULL,
+    budget_expenses_type TEXT NOT NULL,
+    budget_particulars TEXT NOT NULL,
+    budget_amount NUMERIC(12, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Office Account Investment Table
+CREATE TABLE account_office_investment
+(
+    aci_id SERIAL NOT NULL PRIMARY KEY,
+    aci_daily_activity_type TEXT NOT NULL,
+    aci_date TEXT NOT NULL,
+    aci_particulars TEXT NOT NULL,
+    aci_investment_type TEXT NOT NULL,
+    aci_amount TEXT NOT NULL,
+    aci_payment_mode TEXT NOT NULL,
+    aci_transaction_remark TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Office Account Expense Table
+CREATE TABLE office_expenses (
+    expense_id SERIAL PRIMARY KEY,
+
+    daily_activity_type VARCHAR(100) DEFAULT 'Office Expenses',
+    date DATE NOT NULL,
+    particulars TEXT,
+    type VARCHAR(50),
+
+    base_amount NUMERIC(12, 2) DEFAULT 0.00,
+    payment_mode VARCHAR(50),
+    transaction_remark TEXT,
+    discount NUMERIC(12, 2) DEFAULT 0.00,
+
+    s_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    s_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    c_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    c_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    i_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    i_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+
+    total_amount NUMERIC(12, 2) DEFAULT 0.00,
+
+    created_by INT REFERENCES user_profile(user_id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Cash In Hand Table
+CREATE TABLE cih_details
+(
+    cih_id  SERIAL NOT NULL PRIMARY KEY,
+    daily_activity TEXT NOT NULL,
+    cih_transaction_type TEXT NOT NULL,
+    cih_holders_name TEXT NOT NULL,
+    cih_designation TEXT NOT NULL,
+    cih_remarks TEXT NOT NULL,
+    cih_amount NUMERIC(14, 2) NOT NULL,
+    created_by INTEGER REFERENCES user_profile(user_id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Trxn Request Table
+CREATE TABLE cih_trxn_requests (
+    trxn_id SERIAL PRIMARY KEY,
+    daily_activity_type VARCHAR(100),
+    requirement_type VARCHAR(100),
+
+    user_name VARCHAR(100) NOT NULL,
+    user_designation VARCHAR(100),
+    transaction_type VARCHAR(50),
+    trxn_remarks TEXT,
+    payment_mode VARCHAR(50),
+    expense_type VARCHAR(50),
+    amount NUMERIC(12, 2),
+    status VARCHAR(20) DEFAULT 'Pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create Trxn Expense Request
+CREATE TABLE expense_requests (
+                                  trxn_id SERIAL PRIMARY KEY,
+                                  daily_activity_type VARCHAR(100),
+                                  requirement_type VARCHAR(100),
+
+    -- General Request Info
+                                  transaction_title VARCHAR(255) NOT NULL,
+                                  trxn_remarks TEXT NOT NULL,
+                                  user_name VARCHAR(150) NOT NULL,
+                                  user_designation VARCHAR(50) NOT NULL,
+                                  payment_mode VARCHAR(50) NOT NULL, -- UPI / Bank / Cash
+                                  expense_type VARCHAR(50) NOT NULL, -- Direct / Indirect
+                                  amount NUMERIC(15,2) NOT NULL,
+                                  status VARCHAR(20) DEFAULT 'Pending',
+                                  cash_flow_type VARCHAR(50) NOT NULL, -- Cash Given / Cash Return
+
+    -- Cash Given Fields
+                                  given_datetime TEXT NULL,
+                                  given_sender_name VARCHAR(150) NULL,
+                                  given_sender_designation VARCHAR(50) NULL,
+                                  given_payment_mode VARCHAR(50) NULL,
+                                  given_amount NUMERIC(15,2) NULL,
+
+    -- Cash Return Fields
+                                  return_datetime TEXT NULL,
+                                  return_receiver_name VARCHAR(150) NULL,
+                                  return_receiver_designation VARCHAR(50) NULL,
+                                  return_payment_mode VARCHAR(50) NULL,
+                                  total_requested_amount NUMERIC(15,2) NULL,
+                                  total_expensed_amount NUMERIC(15,2) NULL,
+                                  total_balance_amount NUMERIC(15,2) NULL,
+                                  total_return_amount NUMERIC(15,2) NULL,
+
+    -- Audit Fields
+                                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+--------------------------------------------------------------------------------------
+
+--Project
+CREATE TABLE project_table (
+    project_id SERIAL PRIMARY KEY,
+    start_date TEXT,
+    end_date TEXT,
+    project_name VARCHAR(100),
+    project_area NUMERIC(15,2),
+    rate_per_sqft NUMERIC(15,2),
+    area_sqft NUMERIC(15,2),
+    construction_cost NUMERIC(15,2),
+    construction_budget NUMERIC(15,2),
+    septic_tank NUMERIC(15,2),
+
+    s_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    s_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    c_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    c_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    i_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    i_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+
+    plot_cost NUMERIC(15,2),
+    plot_sqft NUMERIC(15,2),
+
+    project_remarks VARCHAR(150),
+    status VARCHAR(20) DEFAULT 'Inline',
+    created_by INT NOT NULL REFERENCES user_profile(user_id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Amenities Table
+CREATE TABLE amenities
+(
+    amenitiy_id SERIAL PRIMARY KEY,
+    project_id INT NOT NULL REFERENCES project_table(project_id) ON DELETE CASCADE,
+    amenities_item VARCHAR(100) NOT NULL,
+    amenities_amount NUMERIC(15,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Extra Items
+CREATE TABLE extra_items
+(
+    extra_id SERIAL PRIMARY KEY,
+    project_id INT NOT NULL REFERENCES project_table(project_id) ON DELETE CASCADE,
+    extra_item VARCHAR(100) NOT NULL,
+    extra_amount NUMERIC(15,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+--- Doc Charges
+CREATE TABLE documents
+(
+    doc_id SERIAL PRIMARY KEY,
+    project_id INT NOT NULL REFERENCES project_table(project_id) ON DELETE CASCADE,
+    doc_item VARCHAR(100) NOT NULL,
+    doc_amount NUMERIC(15,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+----------------------------------------------------------
+
+---Labour Table --------------------------------------------------------------------------------------------------------
+CREATE TABLE labour_master
+(
+    labour_id SERIAL NOT NULL PRIMARY KEY,
+    project_name VARCHAR(100),
+    total_mason_cost NUMERIC(15, 2),
+    total_centering_cost NUMERIC(15, 2),
+    total_plumbing_cost NUMERIC(15, 2),
+    total_electrical_cost NUMERIC(15, 2),
+    total_tiles_cost NUMERIC(15, 2),
+    total_carpenter_cost NUMERIC(15, 2),
+    total_painter_cost NUMERIC(15, 2),
+    total_other_cost NUMERIC(15, 2),
+    total_labour_cost NUMERIC(15, 2),
+    created_by INT NOT NULL REFERENCES user_profile(user_id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+--Mason Table
+CREATE TABLE mason_master
+(
+    mason_id SERIAL NOT NULL PRIMARY KEY,
+    labour_id INT NOT NULL REFERENCES labour_master(labour_id) ON DELETE CASCADE,
+
+    mason_name VARCHAR(100),
+    mason_phone NUMERIC(15, 2),
+    mason_address VARCHAR(100),
+
+    mason_contract NUMERIC(15, 2),
+    mason_contract_amount NUMERIC(15, 2),
+
+    mason_basement VARCHAR(100),
+    mason_basement_amount NUMERIC(15, 2),
+
+    mason_lintel VARCHAR(100),
+    mason_lintel_amount NUMERIC(15, 2),
+
+    mason_roof VARCHAR(100),
+    mason_roof_amount NUMERIC(15, 2),
+
+    mason_outer_plastering VARCHAR(100),
+    mason_outer_plastering_amount NUMERIC(15, 2),
+
+    mason_inner_plastering VARCHAR(100),
+    mason_inner_plastering_amount NUMERIC(15, 2),
+
+    mason_septic_tank VARCHAR(100),
+    mason_septic_tank_amount NUMERIC(15, 2),
+
+    mason_s_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    mason_s_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    mason_c_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    mason_c_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    mason_i_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    mason_i_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- Centering Table -----------------------------------------------------------------------------------------------------
+CREATE TABLE centering_master
+(
+    centering_id SERIAL NOT NULL PRIMARY KEY,
+    labour_id INT NOT NULL REFERENCES labour_master(labour_id) ON DELETE CASCADE,
+
+    centering_name VARCHAR(100),
+    centering_phone NUMERIC(15, 2),
+    centering_address VARCHAR(100),
+
+    centering_contract NUMERIC(15, 2),
+    centering_contract_amount NUMERIC(15, 2),
+
+    footing_ground VARCHAR(100),
+    footing_ground_amount NUMERIC(15, 2),
+
+    plinth_beam VARCHAR(100),
+    plinth_beam_amount NUMERIC(15, 2),
+
+    basement_column VARCHAR(100),
+    basement_column_amount NUMERIC(15, 2),
+
+    outer_plastering VARCHAR(100),
+    outer_plastering_amount NUMERIC(15, 2),
+
+    feet_column VARCHAR(100),
+    feet_column_amount NUMERIC(15, 2),
+
+    lintel_beam VARCHAR(100),
+    lintel_beam_amount NUMERIC(15, 2),
+
+    after_lintel_column VARCHAR(100),
+    after_lintel_column_amount NUMERIC(15, 2),
+
+    hide_beam VARCHAR(100),
+    hide_beam_amount NUMERIC(15, 2),
+
+    centering_roof VARCHAR(100),
+    centering_roof_amount NUMERIC(15, 2),
+
+    roof_beam VARCHAR(100),
+    roof_beam_amount NUMERIC(15, 2),
+
+    centering_s_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    centering_s_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    centering_c_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    centering_c_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    centering_i_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    centering_i_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Centering Items
+CREATE TABLE centering_items (
+
+    centering_item_id SERIAL NOT NULL PRIMARY KEY,
+    centering_id INT REFERENCES centering_master(centering_id) ON DELETE CASCADE,
+
+    centering_item_name VARCHAR(100),
+    centering_item_amount NUMERIC(15, 2),
+    centering_item_remarks TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Centering Table -----------------------------------------------------------------------------------------------------
+
+-- Plumbing Table ------------------------------------------------------------------------------------------------------
+CREATE TABLE plumbing_master
+(
+    plumbing_id SERIAL NOT NULL PRIMARY KEY,
+    labour_id INT NOT NULL REFERENCES labour_master(labour_id) ON DELETE CASCADE,
+
+    plumbing_name VARCHAR(100),
+    plumbing_phone NUMERIC(15, 2),
+    plumbing_address VARCHAR(100),
+
+    plumbing_contract NUMERIC(15, 2),
+    plumbing_contract_amount NUMERIC(15, 2),
+
+    plumbing_s_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    plumbing_s_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    plumbing_c_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    plumbing_c_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    plumbing_i_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    plumbing_i_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Plumbing Items
+CREATE TABLE plumbing_items (
+
+    plumbing_item_id SERIAL NOT NULL PRIMARY KEY,
+    plumbing_id INT REFERENCES plumbing_master(plumbing_id) ON DELETE CASCADE,
+
+    plumbing_item_name VARCHAR(100),
+    plumbing_item_amount NUMERIC(15, 2),
+    plumbing_item_remarks TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+-- Plumbing Table ------------------------------------------------------------------------------------------------------
+
+-- Electrical Table ----------------------------------------------------------------------------------------------------
+CREATE TABLE electrical_master
+(
+    electrical_id SERIAL NOT NULL PRIMARY KEY,
+    labour_id INT NOT NULL REFERENCES labour_master(labour_id) ON DELETE CASCADE,
+
+    electrical_name VARCHAR(100),
+    electrical_phone NUMERIC(15, 2),
+    electrical_address VARCHAR(100),
+
+    electrical_contract NUMERIC(15, 2),
+    electrical_contract_amount NUMERIC(15, 2),
+
+    electrical_s_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    electrical_s_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    electrical_c_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    electrical_c_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    electrical_i_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    electrical_i_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Electrical Items
+CREATE TABLE electrical_items (
+
+    electrical_item_id SERIAL NOT NULL PRIMARY KEY,
+    electrical_id INT REFERENCES electrical_master(electrical_id) ON DELETE CASCADE,
+
+    electrical_item_name VARCHAR(100),
+    electrical_item_amount NUMERIC(15, 2),
+    electrical_item_remarks TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+-- Electrical Table ----------------------------------------------------------------------------------------------------
+
+
+-- Tiles Table ---------------------------------------------------------------------------------------------------------
+CREATE TABLE Tiles_master
+(
+    tiles_id SERIAL NOT NULL PRIMARY KEY,
+    labour_id INT NOT NULL REFERENCES labour_master(labour_id) ON DELETE CASCADE,
+
+    tiles_name VARCHAR(100),
+    tiles_phone NUMERIC(15,2),
+    tiles_address VARCHAR(100),
+
+    tiles_contract NUMERIC(15,2),
+    tiles_contract_amount NUMERIC(15,2),
+
+    tiles_s_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    tiles_s_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    tiles_c_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    tiles_c_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    tiles_i_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    tiles_i_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tiles Items
+CREATE TABLE tiles_items (
+
+    tiles_item_id SERIAL NOT NULL PRIMARY KEY,
+    tiles_id INT REFERENCES Tiles_master(tiles_id) ON DELETE CASCADE,
+
+    tiles_item_name VARCHAR(100),
+    tiles_item_amount NUMERIC(15, 2),
+    tiles_item_remarks TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+-- Tiles Table ---------------------------------------------------------------------------------------------------------
+
+
+-- Carpenter Table ---------------------------------------------------------------------------------------------------------
+CREATE TABLE carpenter_master
+(
+    carpenter_id SERIAL NOT NULL PRIMARY KEY,
+    labour_id INT NOT NULL REFERENCES labour_master(labour_id) ON DELETE CASCADE,
+
+    carpenter_name VARCHAR(100),
+    carpenter_phone NUMERIC(15,2),
+    carpenter_address VARCHAR(100),
+
+    carpenter_contract NUMERIC(15,2),
+    carpenter_contract_amount NUMERIC(15,2),
+
+    carpenter_s_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    carpenter_s_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    carpenter_c_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    carpenter_c_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    carpenter_i_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    carpenter_i_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Carpenter Items
+CREATE TABLE carpenter_items (
+
+    carpenter_item_id SERIAL NOT NULL PRIMARY KEY,
+    carpenter_id INT REFERENCES carpenter_master(carpenter_id) ON DELETE CASCADE,
+
+    carpenter_item_name VARCHAR(100),
+    carpenter_item_amount NUMERIC(15, 2),
+    carpenter_item_remarks TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+-- Carpenter Table ------------------------------------------------------------------------------------------------------
+
+
+-- Painter Table ---------------------------------------------------------------------------------------------------------
+CREATE TABLE painter_master
+(
+    painter_id SERIAL NOT NULL PRIMARY KEY,
+    labour_id INT NOT NULL REFERENCES labour_master(labour_id) ON DELETE CASCADE,
+
+    painter_name VARCHAR(100),
+    painter_phone NUMERIC(15,2),
+    painter_address VARCHAR(100),
+
+    painter_contract NUMERIC(15,2),
+    painter_contract_amount NUMERIC(15,2),
+
+    painter_s_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    painter_s_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    painter_c_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    painter_c_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    painter_i_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    painter_i_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Painter Items
+CREATE TABLE painter_items (
+
+    painter_item_id SERIAL NOT NULL PRIMARY KEY,
+    painter_id INT REFERENCES painter_master(painter_id) ON DELETE CASCADE,
+
+    painter_item_name VARCHAR(100),
+    painter_item_amount NUMERIC(15, 2),
+    painter_item_remarks TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+-- Painter Table ------------------------------------------------------------------------------------------------------
+
+-- Other Table ---------------------------------------------------------------------------------------------------------
+CREATE TABLE other_master
+(
+    other_id SERIAL NOT NULL PRIMARY KEY,
+    labour_id INT NOT NULL REFERENCES labour_master(labour_id) ON DELETE CASCADE,
+
+    other_name VARCHAR(100),
+    other_phone NUMERIC(15,2),
+    other_address VARCHAR(100),
+
+    other_contract NUMERIC(15,2),
+    other_contract_amount NUMERIC(15,2),
+
+    other_s_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    other_s_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    other_c_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    other_c_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+    other_i_gst_percent NUMERIC(5, 2) DEFAULT 0.00,
+    other_i_gst_amount NUMERIC(12, 2) DEFAULT 0.00,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Other Items
+CREATE TABLE other_items (
+
+    other_item_id SERIAL NOT NULL PRIMARY KEY,
+    other_id INT REFERENCES other_master(other_id) ON DELETE CASCADE,
+
+    other_item_name VARCHAR(100),
+    other_item_amount NUMERIC(15, 2),
+    other_item_remarks TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+-- Other Table ------------------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------------------------------------
+CREATE TABLE expense_requests (
+    trxn_id SERIAL PRIMARY KEY,
+    daily_activity_type VARCHAR(100),
+    requirement_type VARCHAR(100),
+    transaction_title VARCHAR(255) NOT NULL,
+    trxn_remarks TEXT NOT NULL,
+    user_name VARCHAR(150) NOT NULL,
+    user_designation VARCHAR(50) NOT NULL,
+    payment_mode VARCHAR(50) NOT NULL,   -- UPI / Bank / Cash
+    expense_type VARCHAR(50) NOT NULL,   -- Direct / Indirect
+    amount NUMERIC(15,2) NOT NULL,
+    status VARCHAR(20) DEFAULT 'Pending',
+    cash_flow_type VARCHAR(50) NOT NULL, -- Cash Given / Cash Return
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Cah Given
+CREATE TABLE cash_given (
+    given_id SERIAL PRIMARY KEY,
+    trxn_id INT NOT NULL REFERENCES expense_requests(trxn_id) ON DELETE CASCADE,
+    given_date TEXT,
+    given_sender_name VARCHAR(150),
+    given_sender_designation VARCHAR(50),
+    given_payment_mode VARCHAR(50),
+    given_amount NUMERIC(15,2)
+);
+
+-- Cash Return
+CREATE TABLE cash_return (
+    return_id SERIAL PRIMARY KEY,
+    trxn_id INT NOT NULL REFERENCES expense_requests(trxn_id) ON DELETE CASCADE,
+    return_date TEXT,
+    return_sender_name VARCHAR(150),
+    return_sender_designation VARCHAR(50),
+    return_payment_mode VARCHAR(50),
+    total_requested_amount NUMERIC(15,2),
+    total_expensed_amount NUMERIC(15,2),
+    total_balance_amount NUMERIC(15,2),
+    total_return_amount NUMERIC(15,2)
+);
+
+-- Expense Items for Cash Return
+CREATE TABLE expense_items (
+    expense_id SERIAL PRIMARY KEY,
+    return_id INT NOT NULL REFERENCES cash_return(return_id) ON DELETE CASCADE,
+    expense_description TEXT NOT NULL,
+    expense_amount NUMERIC(15,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Delete Data
+TRUNCATE TABLE user_profile;
+
+TRUNCATE TABLE user_profile;
+
+TRUNCATE TABLE account_office_investment;
+
+TRUNCATE TABLE office_expenses;
+
+TRUNCATE TABLE bank_details;
+
+TRUNCATE TABLE supplier_profile;
+
+TRUNCATE Table budget_details;
+
+TRUNCATE TABLE expense_requests;
+TRUNCATE TABLE cash_given;
+TRUNCATE TABLE project_table;
+
+-- Drop Tables
+DROP TABLE user_profile;
+DROP TABLE budget_details;
+DROP TABLE supplier_profile;
+DROP TABLE bank_details;
+DROP TABLE account_office_investment;
+DROP TABLE office_expenses;
+DROP TABLE cih_trxn_requests;
+DROP TABLE expense_requests;
+DROP TABLE cash_given;
+DROP TABLE cash_return;
+DROP TABLE project_table;
+
+-- Alter
+ALTER TABLE user_profile
+    ALTER COLUMN  user_password TYPE bytea
+        USING user_password::bytea;
+
+-- Alter Suppliers Table
+ALTER TABLE supplier_profile
+    ADD COLUMN created_by INTEGER REFERENCES user_profile(user_id) ON DELETE SET NULL;
+
+-- Alter Bank Table
+ALTER TABLE bank_details
+    ADD COLUMN created_by INTEGER REFERENCES user_profile(user_id) ON DELETE SET NULL;
+
+-- Select User Table
+SELECT * FROM user_profile;
+
+-- Select Supplier Table
+SELECT * FROM supplier_profile;
+
+-- Select Bank Details Table
+SELECT * FROM bank_details;
+
+-- Select Budget Table
+SELECT * FROM budget_details;
+
+-- Select Office Investment Table
+SELECT * FROM account_office_investment;
+
+-- Select Office Expense Table
+SELECT * FROM office_expenses;
+
+-- Select Trxn CIH Request Table
+SELECT * FROM cih_trxn_requests;
+
+-- Select Trxn req expense
+SELECT * FROM expense_requests;
+
+-- Project Table
+SELECT * FROM project_table;
+SELECT * FROM amenities;
+SELECT * FROM documents;
+SELECT * FROM extra_items;
+
+
+SELECT * FROM cash_given;
+SELECT * FROM cash_return;
+SELECT * FROM expense_items;
+
+--Labour Table
+SELECT * FROM labour_master;
+SELECT * FROM mason_master;
+SELECT * FROM centering_master;
+SELECT * FROM centering_items;
+SELECT * FROM plumbing_master;
+SELECT * FROM plumbing_items;
+SELECT * FROM electrical_master;
+SELECT * FROM electrical_items;
+SELECT * FROM carpenter_master;
+SELECT * FROM carpenter_items;
+SELECT * FROM painter_master;
+SELECT * FROM painter_items;
+SELECT * FROM other_master;
+SELECT * FROM other_items;
+
+
+-- Expense Request -----------------------------------------------------------------------------------------------------
+CREATE TABLE office_expense_requests (
+    request_id SERIAL PRIMARY KEY,
+    daily_activity_type VARCHAR(100) DEFAULT 'Office Expenses',
+    particulars VARCHAR(100),
+    expense_type VARCHAR(100),
+    requested_by INT REFERENCES user_profile(user_id),
+    amount_requested NUMERIC(12,2) NOT NULL,
+    transaction_remark TEXT,
+    payment_mode VARCHAR(50),
+    priority_level VARCHAR(100),
+    status VARCHAR(50) DEFAULT 'In Review' CHECK (status IN ('In Review', 'Approved', 'Denied', 'Received')),
+    approved_by INT REFERENCES user_profile(user_id),
+    forwarded_to INT REFERENCES user_profile(user_id),
+    date_requested TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+SELECT * FROM office_expense_requests;
+
+-- Transaction (Log)
+CREATE TABLE transactions (
+    transaction_id SERIAL PRIMARY KEY,
+    linked_request_id INT REFERENCES office_expense_requests(request_id) ON DELETE CASCADE,
+    paid_by INT REFERENCES user_profile(user_id),  -- Accountant
+    paid_to INT REFERENCES user_profile(user_id),  -- SS / Individual
+    amount_paid NUMERIC(12,2) NOT NULL,
+    mode_of_payment VARCHAR(50) CHECK (mode_of_payment IN ('Cash')),
+    notes TEXT,
+    status VARCHAR(50) CHECK (status IN ('In Review', 'Approved', 'Denied', 'Received')),
+    date_paid TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- General Ledger (Universal, instead of 3 separate)
+CREATE TABLE general_ledger (
+    ledger_id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES user_profile(user_id),   -- whose account
+    counterparty_id INT REFERENCES user_profile(user_id), -- opposite side
+    linked_request_id INT REFERENCES office_expense_requests(request_id),
+    transaction_id INT REFERENCES transactions(transaction_id),
+    type VARCHAR(20) CHECK (type IN ('Income', 'Expense')),
+    source VARCHAR(20) CHECK (source IN ('Bank', 'Cash')),
+    amount NUMERIC(12,2) NOT NULL,
+    balance NUMERIC(12,2), -- running balance for user
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE md_ledger (
+    ledger_id SERIAL PRIMARY KEY,
+    md_id INT REFERENCES user_profile(user_id),
+    to_user INT REFERENCES user_profile(user_id),
+    amount NUMERIC(12,2),
+    type VARCHAR(20) CHECK (type IN ('Income', 'Expense')),
+    source VARCHAR(20) CHECK (source IN ('Bank', 'Cash')),
+    balance NUMERIC(12,2),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE accountant_ledger (
+    ledger_id SERIAL PRIMARY KEY,
+    accountant_id INT REFERENCES user_profile(user_id),
+    from_md INT REFERENCES user_profile(user_id),
+    to_user INT REFERENCES user_profile(user_id),
+    amount NUMERIC(12,2),
+    type VARCHAR(20) CHECK (type IN ('Inflow', 'Outflow')),
+    balance NUMERIC(12,2),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE user_ledger (
+    ledger_id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES user_profile(user_id),
+    inflow NUMERIC(12,2) DEFAULT 0,
+    outflow NUMERIC(12,2) DEFAULT 0,
+    balance NUMERIC(12,2),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- Expense Request -----------------------------------------------------------------------------------------------------

@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+body {
+  background: #F1F1F1;
+  font-family: "Futura PT", sans-serif;
+  font-weight: 450;
+}
+
+.head {
+  font-family: "Playfair Display", serif;
+  font-weight: bold;
+}
+
+.gen_text {
+  font-family: "Futura PT", sans-serif;
+  font-weight: 450;
+}
+
+@font-face {
+    font-family: 'Futura PT';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Futura PT'), url('https://fonts.cdnfonts.com/s/72205/FuturaCyrillicBook.woff') format('woff');
+}
+@font-face {
+    font-family: 'Futura PT';
+    font-style: normal;
+    font-weight: 300;
+    src: local('Futura PT'), url('https://fonts.cdnfonts.com/s/72205/FuturaCyrillicLight.woff') format('woff');
+}
+@font-face {
+    font-family: 'Futura PT';
+    font-style: normal;
+    font-weight: 450;
+    src: local('Futura PT'), url('https://fonts.cdnfonts.com/s/72205/FuturaCyrillicMedium.woff') format('woff');
+}
+@font-face {
+    font-family: 'Futura PT';
+    font-style: normal;
+    font-weight: 500;
+    src: local('Futura PT'), url('https://fonts.cdnfonts.com/s/72205/FuturaCyrillicDemi.woff') format('woff');
+}
+@font-face {
+    font-family: 'Futura PT';
+    font-style: normal;
+    font-weight: 600;
+    src: local('Futura PT'), url('https://fonts.cdnfonts.com/s/72205/FuturaCyrillicHeavy.woff') format('woff');
+}
+@font-face {
+    font-family: 'Futura PT';
+    font-style: normal;
+    font-weight: 700;
+    src: local('Futura PT'), url('https://fonts.cdnfonts.com/s/72205/FuturaCyrillicBold.woff') format('woff');
+}
+@font-face {
+    font-family: 'Futura PT';
+    font-style: normal;
+    font-weight: 800;
+    src: local('Futura PT'), url('https://fonts.cdnfonts.com/s/72205/FuturaCyrillicExtraBold.woff') format('woff');
+}

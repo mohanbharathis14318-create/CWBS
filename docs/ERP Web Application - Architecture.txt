@@ -1,0 +1,73 @@
+ERP Web Application - Architecture (PERN Stack)
+
+|-- Client (React)
+|   |-- Login / Auth Pages
+|   |-- Dashboards (Role-based)
+|   |   |-- MD Dashboard
+|   |   |   |-- Daily Activities
+|   |   |   |-- Creation (Sites, Labour, Bank, Budget)
+|   |   |   |-- Reports (P&L, Budget vs Actual, Outstanding)
+|   |   |
+|   |   |-- Accountant Dashboard
+|   |   |   |-- Daily Expenses (Office/Site)
+|   |   |   |-- Outstanding Management
+|   |   |   |-- Requirement Processing
+|   |   |
+|   |   |-- Site Supervisor Dashboard
+|   |   |   |-- Submit Site Expenses (Labour/Materials)
+|   |   |   |-- Requirement Requests
+|   |   |
+|   |   |-- Individual Staff Dashboard
+|   |       |-- View own entries
+|   |       |-- Submit Requirements
+|
+|-- API Gateway (Express.js - Node)
+|   |-- Auth Controller
+|   |-- Role-Based Route Guards
+|   |-- Services
+|       |-- /auth         --> Login, JWT, Role Validation
+|       |-- /users        --> Create/Edit/Delete Users (MD only)
+|       |-- /projects     --> Sites, Labour Contracts, Costing
+|       |-- /transactions --> Daily A/C, General A/C, Site A/C
+|       |-- /requirements --> Requests, Approvals, Deliveries
+|       |-- /reports      --> P/L, Budget vs Actual, Outstanding
+|       |-- /suppliers    --> Supplier Master, Payments
+|
+|-- Database (PostgreSQL)
+|   |-- Tables
+|   |   |-- users (roles: MD, Accountant, Supervisor, Staff)
+|   |   |-- roles
+|   |   |-- sites
+|   |   |-- labour_contracts
+|   |   |-- transactions
+|   |   |-- requirements
+|   |   |-- reports
+|   |   |-- suppliers
+|   |
+|   |-- Row Level Security (RLS)
+|       |-- Staff: Read-only after submit
+|       |-- MD: Full override/edit
+|
+|-- Supporting Services
+|   |-- Redis (Notification Queue, Real-time triggers)
+|   |-- MinIO / S3 (Invoice/Bill File Storage)
+|   |-- Socket.IO (Real-time delivery status, cash alerts)
+
+ROLES:
+|-- MD
+|   |-- Full access
+|   |-- Create/Edit/Delete Users, Sites, Budgets
+|   |-- View all reports
+|
+|-- Accountant
+|   |-- Add Expenses
+|   |-- Process Requirements
+|   |-- Submit for Approval
+|
+|-- Site Supervisor
+|   |-- Submit Site Expenses
+|   |-- Raise Requirement Requests
+|
+|-- Other Individuals (Staff)
+    |-- View assigned data
+    |-- Raise Requests (permission-based)
